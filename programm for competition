@@ -1,0 +1,170 @@
+import datetime as dt #程式看日期
+import tkinter as tk #GUI介面
+from  tkinter import ttk #用於下拉式選單
+import requests #爬網站資料
+import json #分析json格式
+from bs4 import BeautifulSoup #網站資料解碼
+import folium #繪製視覺化地圖
+import pandas as pd
+print('啟動中...') #提醒
+##確診人數爬蟲
+response = requests.get("https://od.cdc.gov.tw/eic/Day_Confirmation_Age_County_Gender_19CoV.json")
+jd = json.loads(response.text)#使用json module讀取 Json 資料格式
+jf=[]
+for i in jd:
+    jf.append(i.get("個案研判日"))#把每天的確診人數提出來
+day = dt.datetime.now()  #求今天日子
+date = str(int(day.strftime('%Y%m%d'))-1)
+count=0
+for i in jf: #符合今天的，count+1
+    if i == date:
+        count+=1
+##天氣爬蟲
+r = requests.get("https://www.ttv.com.tw/news/weather/today.asp")
+r.encoding = 'utf-8'
+soup = BeautifulSoup(r.text,"html.parser") #將網頁資料以html.parser
+sel = soup.select("tbody a")#抓tbody下的a標籤，都是城市名
+city =[]
+for t in sel:#塞到list裡
+    city.append(t.text)
+weather =[]
+weather = [img['alt'] for img in soup.find_all('img', alt=True)]#抓img有alt的，並且取出alt
+weather.remove('台視新聞 TTV-N')#把該刪的的刪掉
+weather.remove('TTV NEWS 台視新聞台 YouTube 頻道')
+weather.remove('台視新聞台粉絲團')
+weather.pop(-1)
+weather.pop(-1)
+weather.pop(-1)
+weather.pop(-1)
+weather.pop(-1)
+天氣 = dict(zip(city,weather))#magic~合成
+
+##設立weather_present函數，用於顯示天氣
+def weather_present(*args):
+    天氣結果.configure(text = 天氣.get(str(縣市下拉.get())))
+print('已啟動')#啟動程式的提醒同啟動中
+######GUI主架購
+歡迎頁面 = tk.Tk()
+歡迎頁面.title('歡迎使用本系統')
+歡迎頁面.geometry('500x200')
+var身份證 = tk.StringVar()
+var身份證.set('')
+var預算 = tk.StringVar()
+var預算.set('')
+var口罩 = tk.StringVar()
+var口罩.set('')
+var酒精 = tk.StringVar()
+var酒精.set('')
+var額溫槍 = tk.StringVar()
+var額溫槍.set('')
+var次氯酸水 = tk.StringVar()
+var次氯酸水.set('')
+
+##GUI-歡迎頁面的物件
+歡迎訊息 = tk.Label(歡迎頁面, text='歡迎使用本系統'+str(int(date)+1), font=('標楷體',24))
+歡迎訊息.pack(side=tk.TOP)
+昨日確診人數 = tk.Label(歡迎頁面, text='昨日確診人數'+str(count), font=20)
+昨日確診人數.pack(side=tk.TOP)
+縣市架構 = tk.Frame(歡迎頁面)
+縣市架構.pack(side=tk.TOP)
+縣市提示 = tk.Label(縣市架構,text ='查看該縣市今日天氣',font=16)
+縣市提示.pack(side=tk.LEFT)
+縣市下拉 = ttk.Combobox(縣市架構, value=['基隆市',
+                        '臺北市', '新北市', '桃園市',
+                        '新竹縣', '新竹市', '苗栗縣',
+                        '臺中市', '南投縣', '彰化縣',
+                        '雲林縣', '嘉義縣', '嘉義市',
+                        '臺南市', '高雄市', '屏東縣',
+                        '宜蘭縣', '花蓮縣', '臺東縣',
+                        '澎湖縣', '金門縣', '連江縣'],font=14)
+縣市下拉.pack(side=tk.LEFT)
+天氣確認 = tk.Button(縣市架構, text='確認輸入', command=weather_present,font=14)
+天氣確認.pack(side=tk.LEFT)
+天氣結果 = tk.Label(歡迎頁面,font=16)
+天氣結果.pack()
+
+def enter():#進入子頁面的函式(它的觸發在本程式最底下，也是歡迎頁面的最後一個物件)
+    主頁面=tk.Toplevel()
+    主頁面.geometry('500x200')
+    def buyinglist():
+        ##計算按鈕的函式構建
+        def calculate():
+            預算 = int(var預算.get())
+            口罩 = int(var口罩.get())
+            酒精 = int(var酒精.get())
+            額溫槍 = int(var額溫槍.get())
+            次氯酸水 = int(var次氯酸水.get())
+            總額 = 口罩*4+酒精*65+額溫槍*1500+次氯酸水*99
+            if 預算 >= 總額:
+                顯示結果.configure(text='您的預算足夠且將會剩下'+str(預算-總額)+'元',font=24)
+            else:
+                顯示結果.configure(text='您的預算不足，建議您去領'+str(總額-預算)+'元',font=24)
+        ##預算頁面構建
+        top1=tk.Toplevel(主頁面)
+        top1.geometry('500x200')
+        預算架構 = tk.Frame(top1)
+        預算架構.pack(side=tk.TOP)
+        預算詢問 = tk.Label(預算架構, text='您的預算：', font=14).pack(side=tk.LEFT)
+        預算輸入 = tk.Entry(預算架構, textvariable=var預算).pack(side=tk.LEFT)
+        口罩架構 = tk.Frame(top1)
+        口罩架構.pack(side=tk.TOP)
+        口罩詢問 = tk.Label(口罩架構, text='您要購買的口罩數量(4NT/片)：', font=14).pack(side=tk.LEFT)
+        口罩輸入 = tk.Entry(口罩架構, textvariable=var口罩).pack(side=tk.LEFT)
+        酒精架構 = tk.Frame(top1)
+        酒精架構.pack(side=tk.TOP)
+        酒精詢問 = tk.Label(酒精架構, text='您要購買的酒精數量(65NT/瓶)：', font=14).pack(side=tk.LEFT)
+        酒精輸入 = tk.Entry(酒精架構, textvariable=var酒精).pack(side=tk.LEFT)
+        額溫槍架構 = tk.Frame(top1)
+        額溫槍架構.pack(side=tk.TOP)
+        額溫槍詢問 = tk.Label(額溫槍架構, text='您要購買的額溫槍數量(1500NT/支)：', font=14).pack(side=tk.LEFT)
+        額溫槍輸入 = tk.Entry(額溫槍架構, textvariable=var額溫槍).pack(side=tk.LEFT)
+        次氯酸水架構 = tk.Frame(top1)
+        次氯酸水架構.pack(side=tk.TOP)
+        次氯酸水詢問 = tk.Label(次氯酸水架構, text='您要購買的次氯酸水數量(99NT/瓶)：', font=14).pack(side=tk.LEFT)
+        次氯酸水輸入 = tk.Entry(次氯酸水架構, textvariable=var次氯酸水).pack(side=tk.LEFT)
+        計算按鈕架構 = tk.Frame(top1)
+        計算按鈕架構.pack(side=tk.TOP)
+        計算按鈕 = tk.Button(計算按鈕架構,text='計算',font=14,command = calculate).pack()
+        顯示結果架構 = tk.Frame(top1)
+        顯示結果架構.pack(side=tk.TOP)
+        顯示結果 = tk.Label(顯示結果架構)
+        顯示結果.pack()
+    ##定義按鈕確認輸入
+    def identify():
+        ID = var身份證.get()
+        ID_int = int(ID[-1]) #看身分證最後一位
+        day = dt.datetime.now()  #求今天日子
+        weekday = int(day.strftime('%w')) #上行求星期
+        if weekday == 7 or (weekday %2 == 0 and ID_int %2 ==0) or (weekday %2 !=0 and ID_int%2 == 1):
+            驗證結果.configure(text='今天星期'+str(weekday)+'，您今天可以購買口罩。', font=16)
+            開啟預算頁面提示 = tk.Label(購買物品架構, text='開啟預算計算?',font=14).pack(side=tk.LEFT)
+            購買物品按鈕_是 = tk.Button(購買物品架構, text='是',font=14,command=buyinglist)
+            購買物品按鈕_是.pack(side=tk.LEFT)
+            購買物品按鈕_否 = tk.Button(購買物品架構, text='否',font=14)
+            購買物品按鈕_否.pack(side=tk.LEFT)
+        else:
+            驗證結果.configure(text='今天星期'+str(weekday)+'，您今天不可以購買口罩。', font=16)
+            開啟預算頁面提示 = tk.Label(購買物品架構, text='開啟預算計算?',font=14).pack(side=tk.LEFT)
+            購買物品按鈕_是 = tk.Button(購買物品架構, text='是',font=14,command=buyinglist)
+            購買物品按鈕_是.pack(side=tk.LEFT)
+            購買物品按鈕_否 = tk.Button(購買物品架構, text='否',font=14)
+            購買物品按鈕_否.pack(side=tk.LEFT)
+    ##驗證身份證
+    主頁面.title('口罩地圖')
+    身份證字號架構 = tk.Frame(主頁面)
+    身份證字號架構.pack(side=tk.TOP)
+    身份證字號詢問 = tk.Label(身份證字號架構, text='您的身份證字號：', font=14)
+    身份證字號詢問.pack(side=tk.LEFT)
+    身份證字號 = tk.Entry(身份證字號架構,textvariable=var身份證, font=14)
+    身份證字號.pack(side=tk.LEFT)
+    身份證字號按鈕 = tk.Button(身份證字號架構, text='確認輸入', command=identify)
+    身份證字號按鈕.pack(side=tk.LEFT)
+    驗證結果 = tk.Label(主頁面)
+    驗證結果.pack()
+    ##購買物品預算
+    購買物品架構 = tk.Frame(主頁面)
+    購買物品架構.pack(side=tk.TOP)
+
+    
+進入系統 = tk.Button(歡迎頁面, text='進入系統', command=enter,font=14).pack()
+input()
